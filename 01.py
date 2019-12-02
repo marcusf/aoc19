@@ -9,8 +9,8 @@ print(sum([fuel(n) for n in input]))
 total=0
 for row in input:
     remaining = row
-    while remaining>0:
+    while remaining > 0:
         remaining = fuel(remaining)
-        total+=max(0, remaining)
+        total += max(0, remaining)
 
 print(total)
