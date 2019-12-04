@@ -1,28 +1,21 @@
-pp = [int(i) for i in open('02.input', 'r').read().split(',')]
+import utils
+import interp
 
-def run_simulator(noun, verb):
-    program = pp[:]
-    program[1] = noun
-    program[2] = verb
-    ptr = 0
-    while True:
-        if program[ptr] == 1:
-            program[program[ptr+3]] = program[program[ptr+1]] + program[program[ptr+2]]
-            ptr += 4
-        elif program[ptr] == 2:
-            program[program[ptr+3]] = program[program[ptr+1]] * program[program[ptr+2]]
-            ptr += 4
-        elif program[ptr] == 99:
-            return program[0]
-        else:
-            return -1
+pp = utils.read_input()
+
+def run_simulator(pp, noun, verb):
+    stream = pp[:]
+    stream[1] = noun
+    stream[2] = verb
+
+    program, mapping = interp.parse(stream)
+    return interp.run(stream, mapping, program, debug=False)[0]
     
 # UPPGIFT A
-print(run_simulator(12, 2))
+print(run_simulator(pp, 12, 2))
 
 for noun in range(0,99):
     for verb in range(99,0,-1):
-        val = run_simulator(noun, verb)
+        val = run_simulator(pp, noun, verb)
         if val == 19690720:
             print(100*noun+verb)
-

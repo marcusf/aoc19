@@ -1,5 +1,8 @@
 from math import floor
-input = [int(row) for row in open('01.input', 'r').read().split("\n")]
+import utils
+
+input = utils.read_input('\n')
+
 def fuel(n): return floor(n/3)-2
 
 # A

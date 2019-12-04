@@ -1,61 +1,33 @@
 from collections import defaultdict
-pp = [[x for x in i.split(",")] for i in open('03.input', 'r').read().split("\n")]
-    
-grid, costs = defaultdict(int), [defaultdict(int),defaultdict(int)]
+import utils
 
-def encode(x,y): return f"{x}x{y}"
+pp = utils.read_input_multi(fname='03.input')
+grid = utils.Grid()
 
-def parse_one(grid, costs, current_pos, instr, wire, cost):
-    x, y = current_pos
+dir = {'R':(1,0),'L':(-1,0),'U':(0,1),'D':(0,-1)}
+
+def parse_instruction(instr, layer, pos, cost):
+    x, y = pos
     dist = int(instr[1:])
-    if instr[0] == 'R': 
-        for dx in range(0,dist): 
-            grid[encode(x+dx,y)] += wire
-            if costs[encode(x+dx,y)] == 0:
-                costs[encode(x+dx,y)] = cost+dx
-        return (x+dist, y), cost+dist
-    elif instr[0] == 'L': 
-        for dx in range(0,dist): 
-            grid[encode(x-dx,y)] += wire
-            if costs[encode(x-dx,y)] == 0:
-                costs[encode(x-dx,y)] = cost+dx
-        return (x-dist, y), cost+dist
-    elif instr[0] == 'U': 
-        for dy in range(0,dist): 
-            grid[encode(x,y+dy)] += wire
-            if costs[encode(x,y+dy)] == 0:
-                costs[encode(x,y+dy)] = cost+dy
-        return (x, y+dist), cost+dist
-    elif instr[0] == 'D': 
-        for dy in range(0,dist): 
-            grid[encode(x,y-dy)] += wire
-            if costs[encode(x,y-dy)] == 0:
-                costs[encode(x,y-dy)] = cost+dy
-        return (x, y-dist), cost+dist
-    else:
-        print("Error")
-        exit()
-
-primes = [3,5]
+    dx, dy = dir[instr[0]]
+    for d in range(0,dist):
+        layer[(x+dx*d,y+dy*d)] = 1
+        layer.putif_meta(x+dx*d, y+dy*d, 0, cost+d)
+    return((x+dx*dist,y+dy*dist), cost+dist)
 
 for i, line in enumerate(pp):
-    pos = (0,0)
-    cost = 0
-    for item in line:
-        pos, cost = parse_one(grid, costs[i], pos, item, primes[i], cost)
+    pos, cost = (0,0), 0
+    layer = grid.add_layer()
+    for item in line: pos, cost = parse_instruction(item, layer, pos, cost)
 
 mindist, mincost = 9999999999999, 9999999999999
 
-for coord, its in grid.items():
-    if its == 8 and coord != '0x0':
-        x, y = [int(x) for x in coord.split('x')]
-        dist = abs(x)+abs(y)
-        if dist < mindist:
-            mindist = dist
-        cost = costs[0][coord] + costs[1][coord]
-        if cost < mincost:
-            mincost = cost
+for cord in grid.intersection():
+    if cord != (0,0):
+        dist = abs(cord.x)+abs(cord.y)
+        cost = sum([l.get_meta(cord.x,cord.y) for l in grid.layers])
+        if dist < mindist: mindist = dist
+        if cost < mincost: mincost = cost
 
 print(mindist)
 print(mincost)
-#print(costs)
