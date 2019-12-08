@@ -14,23 +14,77 @@ _INSTR = {
         'width': 4,
         'operator': '+',
         'output_arg': 3,
-        'eval': lambda program, args, ip: (program[args[2]] + program[args[1]], ip)
+        'mode': [0,0,0],
+        'eval': lambda p, args, ip, mode, inputs: (rv(p, args[1], mode[0])+rv(p, args[2], mode[1]), ip, None)
     },
     'mul': {
         'opcode': 2,
         'width': 4,
         'operator': '*',
         'output_arg': 3,
-        'eval': lambda program, args, ip: (program[args[2]] * program[args[1]], ip)
+        'mode': [0,0,0],
+        'eval': lambda p, args, ip, mode, inputs: (rv(p, args[2], mode[1]) * rv(p, args[1], mode[0]), ip, None)
     },
     'exit': {
         'opcode': 99,
         'width': 1,
         'halt': True,
         'output_arg': -1,
-        'eval': lambda program, args, ip: None
+        'eval': lambda p, args, ip, mode, inputs: None
+    },
+    'ld': {
+        'opcode': 3,
+        'width': 2,
+        'output_arg': 1,
+        'mode': [0],
+        'eval': lambda p, args, ip, mode, inputs: (inputs[0], ip, None)
+    },
+    'out': {
+        'opcode': 4,
+        'width': 2,
+        'output_arg': 1,
+        'mode': [0],
+        'eval': lambda p, args, ip, mode, inputs: (None, ip, p[args[1]])
+    },
+    'jnz': { # jump-if-true
+        'opcode': 5,
+        'width': 3,
+        'output_arg': 1,
+        'mode': [0,0],
+        'operator': 'if 0 !=',
+        'eval': lambda p, args, ip, mode, inputs: (None, ip if rv(p, args[1], mode[0]) == 0 else rv(p, args[2], mode[1]), None)
+    },
+    'jz': { # jump-if-false
+        'opcode': 6,
+        'width': 3,
+        'output_arg': 1,
+        'mode': [0,0],
+        'operator': 'if 0 ==',
+        'eval': lambda p, args, ip, mode, inputs: (None, ip if rv(p, args[1], mode[0]) != 0 else rv(p, args[2], mode[1]), None)
+    },
+    'lt': {
+        'opcode': 7,
+        'width': 4,
+        'output_arg': 3,
+        'mode': [0,0,0],
+        'operator': '&lt;',
+        'eval': lambda p, args, ip, mode, inputs: (1 if rv(p, args[1], mode[0]) < rv(p, args[2], mode[1]) else 0, ip, None)
+    },
+    'eq': {
+        'opcode': 8,
+        'width': 4,
+        'output_arg': 3,
+        'mode': [0,0,0],
+        'operator': '==',
+        'eval': lambda p, args, ip, mode, inputs:  (1 if rv(p, args[1], mode[0]) == rv(p, args[2], mode[1]) else 0, ip, None)
     }
 }
+
+def rv(program, arg, mode):
+    if mode == 0:
+        return program[arg]
+    else:
+        return arg
 
 def _instr_opcode(instructions):
     opcodes = {}
@@ -40,65 +94,122 @@ def _instr_opcode(instructions):
         opcodes[val['opcode']] = v
     return opcodes
 
+def parse_op(i, instrs):
+    op = list(str(i))
+    if len(op) == 1: 
+        oper = dict(instrs[i])
+        return oper
+    
+    oper = int(''.join(op[-2:]))
+    args = [int(x) for x in op[0:-2]]
+    opcode = dict(instrs[oper])
+    opcode['mode'] = list(reversed([0 for _ in range(opcode['width']-len(args)-1)] + args))
+    return opcode
 
 def parse(stream):
     instrs = _instr_opcode(_INSTR)
     output,mapping = [],[]
     data = stream[:]
-    ip = 0
+    loc = 0
     while len(data):
-        op = data[0]
-        if not op in instrs: exit(f'{op} not recognized, bailing.')
-        opcode = instrs[op]
-        output.append((ip, opcode,data[0:opcode['width']]))
-        current_pos = len(output)-1
-        mapping = mapping + [current_pos for _ in range(opcode['width'])]
-        if op == 99:
-            return output, mapping
-        data = data[opcode['width']:]
-        ip += opcode['width']
+        if int(str(data[0])[-2:]) in instrs:
 
-def print_debug(loc, opcode, args, inputs, outputs):
-    in_str = 'IP = ' + str(inputs[0]) + '; ARGS = ' + ', '.join([str(x) for x in inputs[1:]])
+            opcode = parse_op(data[0], instrs)
+            output.append((loc, opcode,data[0:opcode['width']]))
+            current_pos = len(output)-1
+            mapping = mapping + [current_pos for _ in range(opcode['width'])]
+            if opcode['name'] == 'exit':
+                return output, mapping
+            data = data[opcode['width']:]
+            loc += opcode['width']
+        else:
+            mapping = mapping + [-1]
+            # Seems to be some data stuff here that we can just skip.
+            loc += 1
+            data = data[1:]
+
+def print_debug(loc, op_str, opcode, args, inputs, outputs):
+    in_str = f'OP = {op_str}; IP = {inputs[0]}; ARGS = ' + ', '.join([str(x) for x in inputs[1:]])
     out_str = 'IP = ' + str(outputs[0]) + '; ARGS = ' + ', '.join([str(x) for x in outputs[1:]])
     source_str = str(loc)
     name = opcode['name']
+    modes = opcode['mode']
     operator = opcode['operator'] if 'operator' in opcode else ','
-    opcode_str = f'<op>{name}</op> <var>p[{args[3]}]</var> = <var>p[{args[1]}]</var> {operator} <var>p[{args[2]}]</var>'
+    if opcode['width'] == 4:
+        result = f'<var>p[{args[3]}]</var>' if modes[2] == 0 else f'<dir>{args[3]}</dir>' 
+        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' 
+        var2 = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else  f'<dir>{args[2]}</dir>' 
+        opcode_str = f'<op>{name}</op> {result} = {var1} {operator} {var2}'
+    elif opcode['width'] == 2:
+         opcode_str = f'<op>{name}</op> <var>p[{args[1]}]</var>'
+    elif opcode['width'] == 3:
+        result = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else f'<dir>{args[2]}</dir>' 
+        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' 
+        opcode_str = f'<op>{name}</op> {result} {operator} {var1}'
+    else:
+         opcode_str = f'<op>{name}</op>'
+
     print_formatted_text(HTML(f'<loc>{source_str}:</loc>\t{opcode_str}\t; <opt>({in_str})\t->\t({out_str})</opt>'), style=style)
 
-def run(stream, mapping, output, debug=False, printer=print_debug, tracing=False, tracing_fn=None):
+def run(stream, mapping, output, data_input=[0], data_output=[], debug=False, printer=print_debug, tracing=False, tracing_fn=None):
     instrs = _instr_opcode(_INSTR)
     data = stream[:]
     ip = 0
+
     while True:
-        op = data[ip]
-        if not op in instrs: exit(f'{op} not recognized, bailing.')
-        if op == 99: return data # Magic breaking OP.
-        source, opcode, _ = output[mapping[ip]]
-        if opcode['output_arg'] >= 0:
-            args = data[ip:(ip+opcode['width'])]
-            output_arg = args[opcode['output_arg']]
-            
-            if debug or tracing: inputs = [ip] + [data[a] for a in args[1:]]
+        output, mapping = parse(data)
+        old_ip = ip
+        op = int(str(data[ip])[-2:])
+        if op in instrs:
+            if op == 99: return data, data_output # Magic breaking OP.
+            op_str = data[ip]
+            opcode = parse_op(op_str, instrs)
+            source = ip
 
-            data[output_arg], ip = opcode['eval'](data, args, ip)
-
-            if debug or tracing: 
-                outputs  = [ip] + [data[a] for a in args[1:]]
+            if opcode['output_arg'] >= 0:
+                args = data[ip:(ip+opcode['width'])]
+                output_arg = args[opcode['output_arg']]
                 
-            if debug:
-                print_debug(source, opcode, args, inputs, outputs)
+                if debug or tracing: 
+                    outp = []
+                    for i, a in enumerate(args[1:]):
+                        if opcode['mode'][i] == 0:
+                            outp.append(data[a])
+                        else:
+                            outp.append(a)
+                    inputs = [ip] + outp
 
-            if tracing:
-                tracing_fn(source, opcode, args, inputs, outputs)
+                out_data, ip, output_data = opcode['eval'](data, args, ip, opcode['mode'], data_input)
+                
 
-        ip += opcode['width']
-    return data
+
+                if out_data != None: data[output_arg] = out_data
+                if output_data != None: data_output.append(output_data)
+
+                if debug or tracing: 
+                    outp = []
+                    for i, a in enumerate(args[1:]):
+                        if opcode['mode'][i] == 0:
+                            outp.append(data[a])
+                        else:
+                            outp.append(a)
+                    outputs = [ip] + outp
+
+                if debug:
+                    print_debug(source, op_str, opcode, args, inputs, outputs)
+
+                if tracing:
+                    tracing_fn(source, opcode, args, inputs, outputs)
+            if old_ip == ip:
+                ip += opcode['width']
+        else:
+            ip += 1
+    return data, data_output
 
 style = Style.from_dict({
     'op': 'bold',
     'var': '#aa3333',
+    'dir': '#00ff00',
     'loc': '#666666',
     'opt': '#666666 italic'
 })
