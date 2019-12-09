@@ -13,6 +13,7 @@ style = Style.from_dict({
     'op': 'bold',
     'var': '#aa3333',
     'loc': '#666666',
+    'dir': '#00ff00',
     'opt': '#666666 italic'
 })
 
@@ -40,6 +41,7 @@ def pretty_code(loc, opcode, args):
         opcode_str = f'<op>{name}</op> {result} {operator} {var1}'
     else:
          opcode_str = f'<op>{name}</op>'
+
     return f'<loc>{source_str}:</loc>\t{opcode_str}\t'
 
 # def pretty_code(loc, opcode, args):
@@ -56,15 +58,17 @@ trace_log = []
 def tracer(loc, opcode, args, inputs, outputs):
     trace_log.append((loc,opcode,args,inputs,outputs))
 
-def run(stream, debug=False, trace=False,input_data=[]):
-    result, output = interp.run(stream, debug=debug, printer=print_debug,\
+def run(stream, debug=False, trace=False,input_data=[],ip=0):
+    _, output, ip, terminated = interp.run(stream, debug=debug, printer=print_debug,\
          tracing=trace, tracing_fn=tracer, data_input=input_data)
-    print(f'output: {output}')
+    print(f'output={output}; terminated={terminated}, ip={ip}')
+    return ip
 
 stream = None
 fname = ''
 pokes = []
 input_data = []
+ip = 0
 
 def cli_load(args):
     global stream
@@ -76,13 +80,23 @@ def cli_load(args):
     except:
         print(f'unable to load {fname}')
 
+def cli_continue(args):
+    global stream
+    global input_data
+    global ip
+    verbose = 'verbose' in args
+    trace = 'trace' in args
+    print(f'executing {fname}, verbose={verbose}, trace={trace} from ip={ip}')
+    ip = run(stream, verbose, trace, input_data,ip=ip)
+
 def cli_run(args):
     global stream
     global input_data
+    global ip
     verbose = 'verbose' in args
     trace = 'trace' in args
     print(f'executing {fname}, verbose={verbose}, trace={trace}')
-    run(stream, verbose, trace, input_data)
+    ip = run(stream, verbose, trace, input_data, ip=0)
 
 def cli_print(args):
     global stream
@@ -103,14 +117,16 @@ def cli_exit(args):
 
 def cli_data(args):
     global input_data
-    input_data.append(int(args[0]))
+    for arg in args:
+        input_data.append(int(arg))
 
-commands = {'load':  {'argc': [1],     'fn': cli_load},
-            'run':   {'argc': [0,1,2], 'fn': cli_run},
-            'print': {'argc': [0],     'fn': cli_print},
-            'poke':  {'argc': [2],     'fn': cli_poke},
-            'exit':  {'argc': [0],     'fn': cli_exit},
-            'input':  {'argc': [1],     'fn': cli_data}}
+commands = {'load':  {'argc': [1],          'fn': cli_load},
+            'run':   {'argc': [0,1,2],      'fn': cli_run},
+            'print': {'argc': [0],          'fn': cli_print},
+            'poke':  {'argc': [2],          'fn': cli_poke},
+            'exit':  {'argc': [0],          'fn': cli_exit},
+            'continue':  {'argc': [0,1,2],  'fn': cli_continue},
+            'input':  {'argc': [1,2,3,4,5,6,7,8,9,10], 'fn': cli_data}}
 
 if __name__ == '__main__':
     clist = list(commands.keys())
@@ -122,7 +138,7 @@ if __name__ == '__main__':
         while True:
             bname = fname if len(fname)>0 else 'no file loaded'
             pokess = ", pokes: (" + ", ".join(pokes) + ")" if len(pokes) > 0 else ''
-            bottom = f' {bname} {pokess}, input={input_data}'
+            bottom = f' {bname} {pokess}, input={input_data}, ip={ip}'
             text = session.prompt('> ', completer=command_completer, complete_while_typing=False,  bottom_toolbar=bottom)
             command = text.strip().split(' ')
             if len(command) == 0 or len(text) == 0: 
