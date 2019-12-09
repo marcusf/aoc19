@@ -37,7 +37,7 @@ _INSTR = {
         'width': 2,
         'output_arg': 1,
         'mode': [0],
-        'eval': lambda p, args, ip, mode, inputs: (inputs[0], ip, None)
+        'eval': lambda p, args, ip, mode, inputs: (inputs.pop(0), ip, None)
     },
     'out': {
         'opcode': 4,
@@ -151,17 +151,18 @@ def print_debug(loc, op_str, opcode, args, inputs, outputs):
 
     print_formatted_text(HTML(f'<loc>{source_str}:</loc>\t{opcode_str}\t; <opt>({in_str})\t->\t({out_str})</opt>'), style=style)
 
-def run(stream, mapping, output, data_input=[0], data_output=[], debug=False, printer=print_debug, tracing=False, tracing_fn=None):
+def run(stream, data_input=[0], data_output=[], debug=False, printer=print_debug, tracing=False, tracing_fn=None, ip=0):
     instrs = _instr_opcode(_INSTR)
     data = stream[:]
-    ip = 0
 
     while True:
         output, mapping = parse(data)
         old_ip = ip
         op = int(str(data[ip])[-2:])
         if op in instrs:
-            if op == 99: return data, data_output # Magic breaking OP.
+            if op == 99: return data, data_output, ip, True # Magic breaking OP.
+            if op == 3 and len(data_input) == 0:
+                return data, data_output, ip, False
             op_str = data[ip]
             opcode = parse_op(op_str, instrs)
             source = ip
@@ -204,7 +205,7 @@ def run(stream, mapping, output, data_input=[0], data_output=[], debug=False, pr
                 ip += opcode['width']
         else:
             ip += 1
-    return data, data_output
+    return data, data_output, ip, True
 
 style = Style.from_dict({
     'op': 'bold',

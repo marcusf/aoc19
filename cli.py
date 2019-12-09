@@ -57,10 +57,9 @@ def tracer(loc, opcode, args, inputs, outputs):
     trace_log.append((loc,opcode,args,inputs,outputs))
 
 def run(stream, debug=False, trace=False,input_data=[]):
-    program, mapping = interp.parse(stream)
-    result, output = interp.run(stream, mapping, program, debug=debug, printer=print_debug,\
-         tracing=trace, tracing_fn=tracer, data_input=input_data)[0]
-    print(f'output: {output}, program: {result}')
+    result, output = interp.run(stream, debug=debug, printer=print_debug,\
+         tracing=trace, tracing_fn=tracer, data_input=input_data)
+    print(f'output: {output}')
 
 stream = None
 fname = ''
