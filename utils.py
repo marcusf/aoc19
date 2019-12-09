@@ -15,6 +15,28 @@ def read_input_multi(delim_1='\n', delim_2=',', fname='', generator=int):
     if fname == '': fname = os.path.basename(sys.argv[0]).split('.')[0] + '.input'
     return [[x for x in i.split(delim_2)] for i in open(fname, 'r').read().split(delim_1)]
 
+
+class longlist(list):
+    def __init__(self, lst):
+        self.lst = lst
+        self.last_written = 0
+        self.spill = defaultdict(int)
+
+    def __setitem__(self, index, value):            
+        if index > len(self.lst)-1:
+            self.last_written = index
+            self.spill[index] = value
+        else:
+            self.lst[index] = value
+        
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return self.lst[index]
+        elif index > len(self.lst)-1:
+            return self.spill[index]
+        else:
+            return self.lst[index]
+
 # ==============================================
 # Basic 2D coordinates
 class Coord2D:

@@ -7,6 +7,7 @@
 # So if INSTR 0 = MUL, WIDTH 3, then [0,1,5] = MUL 1 5
 from prompt_toolkit import prompt, print_formatted_text, HTML
 from prompt_toolkit.styles import Style
+import utils
 
 _INSTR = {
     'add': {
@@ -44,7 +45,7 @@ _INSTR = {
         'width': 2,
         'output_arg': 1,
         'mode': [0],
-        'eval': lambda p, args, ip, mode, inputs, rb: (None, ip, p[args[1]], None)
+        'eval': lambda p, args, ip, mode, inputs, rb: (None, ip, rv(p, args[1], mode[0], rb), None)
     },
     'jnz': { # jump-if-true
         'opcode': 5,
@@ -84,8 +85,7 @@ _INSTR = {
         'output_arg': 1,
         'mode': [0],
         'operator': 'set',
-        'eval': lambda p, args, ip, mode, inputs, rb:  (None, ip, None, rv(p, args[1], mode[0], rb))
-
+        'eval': lambda p, args, ip, mode, inputs, rb: (None, ip, None, rv(p, args[1], mode[0], rb))
     }
 }
 
@@ -94,7 +94,7 @@ def rv(program, arg, mode, rb):
         return program[arg]
     elif mode == 2:
         return program[arg+rb]
-    else:
+    elif mode == 1:
         return arg
 
 def _instr_opcode(instructions):
@@ -140,36 +140,43 @@ def parse(stream):
             data = data[1:]
     return output, mapping
 
-def print_debug(loc, op_str, opcode, args, inputs, outputs):
-    in_str = f'OP = {op_str}; IP = {inputs[0]}; ARGS = ' + ', '.join([str(x) for x in inputs[1:]])
-    out_str = 'IP = ' + str(outputs[0]) + '; ARGS = ' + ', '.join([str(x) for x in outputs[1:]])
+def print_debug(loc, op_str, opcode, args, inputs, outputs, rel_base, new_rel_base):
+    in_str = f'OP = {op_str}; IP = {inputs[0]}; RB={rel_base}; ARGS = ' + ', '.join(inputs[1:])
+    out_str = f'IP = {outputs[0]};  RB={new_rel_base}; ARGS = ' + ', '.join(outputs[1:])
     source_str = str(loc)
     name = opcode['name']
     modes = opcode['mode']
     operator = opcode['operator'] if 'operator' in opcode else ','
     if opcode['width'] == 4:
-        result = f'<var>p[{args[3]}]</var>' if modes[2] == 0 else f'<dir>{args[3]}</dir>' 
-        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' 
-        var2 = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else  f'<dir>{args[2]}</dir>' 
+        result = f'<var>p[{args[3]}]</var>' if modes[2] == 0 else f'<dir>{args[3]}</dir>' if modes[2] == 1 else f'<rvar>p[{rel_base+args[3]}]</rvar>'
+        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base+args[1]}]</rvar>'
+        var2 = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else  f'<dir>{args[2]}</dir>' if modes[1] == 1 else f'<rvar>p[{rel_base+args[2]}]</rvar>'
         opcode_str = f'<op>{name}</op> {result} = {var1} {operator} {var2}'
     elif opcode['width'] == 2:
-         opcode_str = f'<op>{name}</op> <var>p[{args[1]}]</var>'
+        var = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base+args[1]}]</rvar>'
+        opcode_str = f'<op>{name}</op> {var}'
     elif opcode['width'] == 3:
-        result = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else f'<dir>{args[2]}</dir>' 
-        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' 
+        result = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else f'<dir>{args[2]}</dir>' if modes[1] == 1 else f'<rvar>p[{rel_base+args[2]}]</rvar>'
+        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base+args[1]}]</rvar>'
         opcode_str = f'<op>{name}</op> {result} {operator} {var1}'
     else:
          opcode_str = f'<op>{name}</op>'
 
     print_formatted_text(HTML(f'<loc>{source_str}:</loc>\t{opcode_str}\t; <opt>({in_str})\t->\t({out_str})</opt>'), style=style)
 
-def run(stream, data_input=[0], data_output=[], debug=False, printer=print_debug, tracing=False, tracing_fn=None, ip=0):
+def run(stream, data_input=[0], data_output=[], debug=False, printer=print_debug, tracing=False, tracing_fn=None, ip=0, max_iter=-1, debugger=None):
     instrs = _instr_opcode(_INSTR)
-    data = stream[:]
-    relative_base = 0
 
-    while True:
-        #output, mapping = parse(data)
+    if isinstance(stream, utils.longlist):
+        data = stream
+    else:
+        data = utils.longlist(stream[:])
+
+    relative_base = 0
+    iters = 0
+
+    while max_iter == -1 or iters < max_iter:
+        iters += 1
         old_ip = ip
         op = int(str(data[ip])[-2:])
         if op in instrs:
@@ -188,29 +195,43 @@ def run(stream, data_input=[0], data_output=[], debug=False, printer=print_debug
                     outp = []
                     for i, a in enumerate(args[1:]):
                         if opcode['mode'][i] == 0:
-                            outp.append(data[a])
+                            outp.append(f'DIR: {a}->{data[a]}')
+                        elif opcode['mode'][i] == 2: 
+                            outp.append(f'REL: {a},{relative_base+a}->{data[relative_base+a]}')
                         else:
-                            outp.append(a)
+                            outp.append(f'CONST: {a}')
                     inputs = [ip] + outp
+                    old_rb = relative_base
+
+                if debugger != None:
+                    debugger(data, ip, opcode, args, data_input)
 
                 out_data, ip, output_data, new_rb = opcode['eval'](data, args, ip, opcode['mode'], data_input, relative_base)
                 
 
 
-                if out_data != None: data[output_arg] = out_data
+                if out_data != None: 
+                    if opcode['mode'][opcode['output_arg']-1] == 0:
+                        data[output_arg] = out_data
+                    else: # Relative base
+                        data[relative_base+output_arg] = out_data
+                
                 if output_data != None: data_output.append(output_data)
-                if new_rb != None: relative_base = new_rb
+                if new_rb      != None: 
+                    relative_base += new_rb
 
                 if debug or tracing: 
                     outp = []
                     for i, a in enumerate(args[1:]):
                         if opcode['mode'][i] == 0:
-                            outp.append(data[a])
+                            outp.append(f'DIR: {a}->{data[a]}')
+                        elif opcode['mode'][i] == 2: 
+                            outp.append(f'REL: {a},{relative_base+a}->{data[relative_base+a]}')
                         else:
-                            outp.append(a)
+                            outp.append(f'CONST: {a}')
                     outputs = [ip] + outp
 
-                if debug: print_debug(start_ip, op_str, opcode, args, inputs, outputs)
+                if debug: print_debug(start_ip, op_str, opcode, args, inputs, outputs, old_rb, relative_base)
                 if tracing: tracing_fn(start_ip, opcode, args, inputs, outputs)
 
             if old_ip == ip:
@@ -224,7 +245,8 @@ style = Style.from_dict({
     'var': '#aa3333',
     'dir': '#00ff00',
     'loc': '#666666',
-    'opt': '#666666 italic'
+    'opt': '#666666 italic',
+    'rvar': '#aa55ff'
 })
 
 def pretty(program):
