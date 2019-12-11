@@ -13,6 +13,6 @@ def debugger(code, ip, opcode, args, data_input):
 
 stream = utils.read_input()
 output = []
-interp.run(stream, data_input=[5], data_output=output)
+interp.run(stream, data_input=[1], data_output=output, verbose=True)
 interp.run(stream, data_input=[2], data_output=output)
 print(output)

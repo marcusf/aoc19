@@ -8,52 +8,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
 
-
-style = Style.from_dict({
-    'op': 'bold',
-    'var': '#aa3333',
-    'loc': '#666666',
-    'dir': '#00ff00',
-    'opt': '#666666 italic',
-    'rvar': '#aa55ff'
-})
-
-def print_debug(loc, opcode, args, inputs, outputs, relative_base, new_rel_base):
-    in_str = f'OP = {opcode}; IP = {inputs[0]}; RB={relative_base}; ARGS = ' + ', '.join([x for x in inputs[1:]])
-    out_str = f'IP = {outputs[0]};  RB={new_rel_base}; ARGS = ' + ', '.join([x for x in outputs[1:]])
-    opcode_str = pretty_code(loc, opcode, args, relative_base)
-    print_formatted_text(HTML(f'{opcode_str}\t; <opt>({in_str})\t->\t({out_str})</opt>'), style=style)
-
-def pretty_code(loc, opcode, args, rel_base='*'):
-    source_str = str(loc)
-    name = opcode['name']
-    modes = opcode['mode']
-    operator = opcode['operator'] if 'operator' in opcode else ','
-    if opcode['width'] == 4:
-        result = f'<var>p[{args[3]}]</var>' if modes[2] == 0 else f'<dir>{args[3]}</dir>' if modes[2] == 1 else f'<rvar>p[{rel_base}+{args[3]}]</rvar>'
-        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base}+{args[1]}]</rvar>'
-        var2 = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else  f'<dir>{args[2]}</dir>' if modes[1] == 1 else f'<rvar>p[{rel_base}+{args[2]}]</rvar>'
-        opcode_str = f'<op>{name}</op> {result} = {var1} {operator} {var2}'
-    elif opcode['width'] == 2:
-        var = f'<var>p[{args[1]}]</var>' if modes[0] == 0  else f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base}+{args[1]}]</rvar>'
-        opcode_str = f'<op>{name}</op> {var}'
-    elif opcode['width'] == 3:
-        result = f'<var>p[{args[2]}]</var>' if modes[1] == 0 else f'<dir>{args[2]}</dir>' if modes[1] == 1 else f'<rvar>p[{rel_base}+{args[2]}]</rvar>'
-        var1 = f'<var>p[{args[1]}]</var>' if modes[0] == 0 else  f'<dir>{args[1]}</dir>' if modes[0] == 1 else f'<rvar>p[{rel_base}+{args[1]}]</rvar>'
-        opcode_str = f'<op>{name}</op> {result} {operator} {var1}'
-    else:
-         opcode_str = f'<op>{name}</op>'
-
-    return f'<loc>{source_str}:</loc>\t{opcode_str}\t'
-
-# def pretty_code(loc, opcode, args):
-#     source_str = str(loc)
-#     name = opcode['name']
-#     if opcode['width'] == 1:
-#         return f'<loc>{source_str}:</loc>\t<op>{name}</op>'
-#     else:
-#         operator = opcode['operator'] if 'operator' in opcode else ','
-#         return f'<loc>{source_str}:</loc>\t<op>{name}</op> <var>p[{args[3]}]</var> = <var>p[{args[1]}]</var> {operator} <var>p[{args[2]}]</var>'
+from icode.debug import print_debug, pretty_code, style
 
 trace_log = []
 

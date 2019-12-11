@@ -13,9 +13,10 @@ def read_input(delim=',', fname='', generator=int):
 
 def read_input_multi(delim_1='\n', delim_2=',', fname='', generator=int):
     if fname == '': fname = os.path.basename(sys.argv[0]).split('.')[0] + '.input'
-    return [[x for x in i.split(delim_2)] for i in open(fname, 'r').read().split(delim_1)]
+    return [([x for x in i.split(delim_2)] if delim_2 != None else list(i)) for i in open(fname, 'r').read().split(delim_1)]
 
-
+# ===============================================
+# An infite list representation from a finite list
 class longlist(list):
     def __init__(self, lst):
         self.lst = lst
@@ -51,6 +52,20 @@ class Coord2D:
         if isinstance(other, tuple): return (self.x, self.y) == other 
         else: return (self.x, self.y) == (other.x, other.y)
     def __ne__(self, other): return not(self == other)
+    def __iadd__(self, other): 
+        self.x += other.x
+        self.y += other.y 
+        return self
+
+    def rotate90(self):
+        sx = self.x
+        self.x = -self.y
+        self.y = sx
+    
+    def rotate270(self):
+        sx = self.x
+        self.x = self.y
+        self.y = -sx
 
 # ===================================================
 # Simple grid layer. Combine with other grid layers
@@ -72,16 +87,18 @@ class GridLayer:
         return iter(self.grid.items())
 
     def __getitem__(self, key):
-        x, y = key
+        if isinstance(key, Coord2D):
+            x, y = key.x, key.y
+        else:
+            x, y = key
         return self.get(x, y)
 
     def __setitem__(self, key, val):
-        x, y = key
+        if isinstance(key, Coord2D):
+            x, y = key.x, key.y
+        else:
+            x, y = key
         self.put(x, y, val)
-        self.minx = min(x, self.minx)
-        self.miny = min(y, self.miny)
-        self.maxx = max(x, self.maxx)
-        self.maxy = max(y, self.maxy)
 
     def bounds(self):
         return (self.minx, self.miny, self.maxx, self.maxy)
@@ -89,6 +106,10 @@ class GridLayer:
     def put(self, x, y, val):
         self.grid[Coord2D(x,y)] = val
         self.grid_bag.add(Coord2D(x,y))
+        self.minx = min(x, self.minx)
+        self.miny = min(y, self.miny)
+        self.maxx = max(x, self.maxx)
+        self.maxy = max(y, self.maxy)
     
     def get(self, x, y):
         return self.grid[Coord2D(x,y)]
@@ -102,6 +123,17 @@ class GridLayer:
     def putif_meta(self, x, y, guard, val):
         if self.get_meta(x,y) == guard:
             self.put_meta(x,y,val)
+
+    def print(self):
+        minx, miny, maxx, maxy = self.bounds()
+        for y in range(miny, maxy+1):
+            l = []
+            for x in range(minx, maxx):
+                if self[(x,y)] == 1:
+                    l.append('#')
+                else:
+                    l.append(' ')
+            print(''.join(l)) 
 
 # ========================================
 # A combination of many GridLayer's
@@ -137,6 +169,7 @@ class Grid:
         width = bounds[2]-bounds[0]
         height = bounds[3]-bounds[1]
         off_x, off_y = -bounds[0], -bounds[1]
+        print(width, height)
         array = np.full((height+1,width+1,3), 255, dtype=np.uint8)
         
         for i, l in enumerate(self.layers):
@@ -146,3 +179,4 @@ class Grid:
             for cord in l.grid_bag:
                 array[cord.y+off_y][cord.x+off_x] = [r,g,b]
         return Image.fromarray(array).show()
+
