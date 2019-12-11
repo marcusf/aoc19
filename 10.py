@@ -1,8 +1,8 @@
 import utils
 from collections import defaultdict, namedtuple
-from math import floor, ceil, copysign, gcd, atan2, pi, degrees
+from math import floor, ceil, copysign, gcd, atan2, pi, degrees, hypot
 
-mp = utils.read_input_multi(delim_2=None, fname='10.test', generator=str)
+mp = utils.read_input_multi(delim_2=None, fname='10.input', generator=str)
 point = namedtuple('Point','x,y')
 
 coords = []
@@ -42,20 +42,28 @@ def part1():
                     break
                 i += 1
 
-    maxv, maxp = 0,(0,0)
+    maxv, maxp, maxl = 0,(0,0),[]
     for k,v in distincts.items():
         if len(v) >= maxv:
             maxp = k
             maxv = len(v)
+            maxl = v
     print(maxp, maxv)
-    return removed, maxp
+    return removed, maxp, maxl
 
-nuked, center = part1()
+_, center, nuked = part1()
 relcoords = [(n.x-center.x, n.y-center.y) for n in nuked if not (n.x==center.x and n.y==center.y)]
-test = sorted(relcoords, key=lambda r: pi/2+atan2(r[1],r[0]))
-tt = [(ceil(90+degrees(atan2(y,x))), x, y) for (x,y) in test]
-start = test.index((0,-8))
 
-t2 = tt[start:] + tt[:start]
-print([(t[1]+center.x, t[2]+center.y, t[1], t[2], t[0]) for t in t2])
-print(t2[199][1]+center.x, t2[199][2]+center.y)
+#quad1 = [p for p in relcoords if p[0] >= 0 and p[1] <= 0]
+#print(sorted(quad1, key=lambda r: atan2(r[1],r[0])))
+
+
+test = sorted(relcoords, key=lambda r: (atan2(r[1],r[0])))
+##tt = [(ceil(-90+degrees(atan2(y,x))), x, y) for (x,y) in test]
+start = test.index((0,-1))
+
+t2 = test[start:] + test[:start]
+#print(len(test))
+remade = [(t[0]+center.x, t[1]+center.y) for t in t2]
+print(remade[199][0]*100+remade[199][1])
+#print(t2[199][1]+center.x, t2[199][2]+center.y)
