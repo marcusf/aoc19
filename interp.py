@@ -8,12 +8,42 @@
 import utils
 from icode.debug import print_debug, pretty_args
 from icode.instructions import parse_op, has_op, get_opcode
-from collections import defaultdict
 
-def run(stream, data_input=[], data_output=[], verbose=False, printer=print_debug, \
+
+class interpreter:
+    def __init__(self, code):
+        self.code = code
+        self.__code = code[:]
+        self.ip = 0
+        self.relative_base = 0
+        self.verbose = False
+        self.printer = print_debug
+        self.tracing = False
+        self.tracing_fn = None
+        self.max_iter = -1
+        self.debugger = None
+        self.finished = False
+        self.input = []
+
+    def run_until_blocked(self):
+        output = []
+        self.code, output, self.ip, self.relative_base, self.finished = run(self.code, data_input=self.input, verbose=self.verbose,\
+            printer=self.printer, tracing=self.tracing, tracing_fn=self.tracing_fn,
+            ip=self.ip, relative_base=self.relative_base, max_iter=self.max_iter, debugger=self.debugger)
+        return output, self.finished
+
+    def run(self, input_provider, **kwargs):
+        while not self.finished:
+            output, finished = self.run_until_blocked()
+            if not finished:
+                self.input = input_provider(output, **kwargs)
+
+
+def run(stream, data_input=[], verbose=False, printer=print_debug, \
     tracing=False, tracing_fn=None, ip=0, relative_base=0, max_iter=-1, debugger=None):
 
     data = stream if isinstance(stream, utils.longlist) else utils.longlist(stream[:])
+    data_output = []
 
     num_iterations = 0
 
