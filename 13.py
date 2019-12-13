@@ -17,7 +17,7 @@ def game_loop(input, surface):
     sleep(0.01)
     system('clear')
     score = -1
-    for x,y,tile in utils.chunk(input, 3):
+    for x, y, tile in utils.chunk(input, 3):
         if x == -1 and y == 0:
             score = tile
         else:
