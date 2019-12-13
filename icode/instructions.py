@@ -38,7 +38,7 @@ def get_opcode(d):
     return int(str(d)[-2:])
 
 def has_op(i):
-    return get_opcode(i) in instructions
+    return get_opcode(i) in instructions and i > 0 and i < 99999
 
 def parse_op(i):
     op = list(str(i))

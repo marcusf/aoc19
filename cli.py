@@ -9,6 +9,7 @@ from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
 
 from icode.debug import print_debug, pretty_code, style
+from icode.parser import parse
 
 trace_log = []
 
@@ -57,7 +58,7 @@ def cli_run(args):
 
 def cli_print(args):
     global stream
-    program, _ = interp.parse(stream)
+    program, _ = parse(stream)
     for row in program:
         print_formatted_text(HTML(pretty_code(*row)), style=style)
 

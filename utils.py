@@ -15,6 +15,14 @@ def read_input_multi(delim_1='\n', delim_2=',', fname='', generator=int):
     if fname == '': fname = os.path.basename(sys.argv[0]).split('.')[0] + '.input'
     return [([x for x in i.split(delim_2)] if delim_2 != None else list(i)) for i in open(fname, 'r').read().split(delim_1)]
 
+def sign(a):
+    if a > 0: return 1
+    elif a < 0: return -1
+    else: return 0
+
+def chunk(list, n):
+    return [list[i * n:(i + 1) * n] for i in range((len(list) + n - 1) // n )] 
+
 # ===============================================
 # An infite list representation from a finite list
 class longlist(list):
@@ -66,6 +74,29 @@ class Coord2D:
         sx = self.x
         self.x = self.y
         self.y = -sx
+
+# ==============================================
+# Basic 3D coordinates
+class Coord3D:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __hash__(self): return hash((self.x, self.y, self.z))
+    def __str__(self): return f"{self.x}x{self.y}x{self.z}"
+    def __repr__(self): return self.__str__()
+    def __eq__(self, other): 
+        if isinstance(other, tuple): return (self.x, self.y, self.z) == other 
+        else: return (self.x, self.y, self.z) == (other.x, other.y, other.z)
+    def __ne__(self, other): return not(self == other)
+    def __iadd__(self, other): 
+        self.x += other.x
+        self.y += other.y 
+        self.z += other.z
+        return self
+    def __sub__(self, other):
+        return Coord3D(self.x-other.x, self.y-other.y, self.z-other.z)
 
 # ===================================================
 # Simple grid layer. Combine with other grid layers
@@ -124,15 +155,12 @@ class GridLayer:
         if self.get_meta(x,y) == guard:
             self.put_meta(x,y,val)
 
-    def print(self):
+    def print(self, factory=lambda c: '#' if c == 1 else ' '):
         minx, miny, maxx, maxy = self.bounds()
         for y in range(miny, maxy+1):
             l = []
             for x in range(minx, maxx):
-                if self[(x,y)] == 1:
-                    l.append('#')
-                else:
-                    l.append(' ')
+                l.append(factory(self[(x,y)]))
             print(''.join(l)) 
 
 # ========================================

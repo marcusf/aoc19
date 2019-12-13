@@ -28,7 +28,6 @@ def pretty_code(loc, opcode, args, rel_base='base'):
     name, modes, width = opcode.name, opcode.mode, opcode.width
     operator = opcode.operator if opcode.operator != None else ','
     vars = fmt_args(args, modes, rel_base)
-
     return f'<loc>{source_str}:</loc>\t{__opcode_table[width].format(name=name,operator=operator,vars=vars)}\t'
 
 def pretty_args(stream, ip, args, opcode, relative_base):
