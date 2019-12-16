@@ -13,7 +13,7 @@ from icode.instructions import parse_op, has_op, get_opcode
 class interpreter:
     def __init__(self, code):
         self.code = code
-        self.__code = code[:]
+        self.original_code = code[:]
         self.ip = 0
         self.relative_base = 0
         self.verbose = False
@@ -36,7 +36,9 @@ class interpreter:
         while not self.finished:
             output, finished = self.run_until_blocked()
             if not finished:
-                self.input = input_provider(output, **kwargs)
+                self.input, cont = input_provider(output, **kwargs)
+                if not cont:
+                    self.finished = True
 
 
 def run(stream, data_input=[], verbose=False, printer=print_debug, \

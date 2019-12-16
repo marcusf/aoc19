@@ -65,15 +65,23 @@ class Coord2D:
         self.y += other.y 
         return self
 
+    def __add__(self, other): 
+        if isinstance(other, tuple):
+            return Coord2D(self.x+other[0], self.y+other[1])
+        else:
+            return Coord2D(self.x+other.x, self.y+other.y)
+
     def rotate90(self):
         sx = self.x
         self.x = -self.y
         self.y = sx
+        return self
     
     def rotate270(self):
         sx = self.x
         self.x = self.y
         self.y = -sx
+        return self
 
 # ==============================================
 # Basic 3D coordinates
@@ -145,11 +153,17 @@ class GridLayer:
     def get(self, x, y):
         return self.grid[Coord2D(x,y)]
 
-    def put_meta(self, x, y, val):
-        self.meta[Coord2D(x,y)] = val
+    def put_meta(self, x, y, v=None):
+        if v == None:
+            self.meta[x] = y
+        else:
+            self.meta[Coord2D(x,y)] = v
 
-    def get_meta(self, x, y):
-        return self.meta[Coord2D(x,y)]
+    def get_meta(self, x_or_coord, y=None):
+        if y == None:
+            return self.meta[x_or_coord]
+        else:
+            return self.meta[Coord2D(x_or_coord,y)]
 
     def putif_meta(self, x, y, guard, val):
         if self.get_meta(x,y) == guard:
@@ -157,12 +171,13 @@ class GridLayer:
 
     def print(self, factory=lambda c: '#' if c == 1 else ' '):
         minx, miny, maxx, maxy = self.bounds()
+        print(''.join(['-' for _ in range(minx, maxx+1)]))
         for y in range(miny, maxy+1):
             l = []
-            for x in range(minx, maxx):
+            for x in range(minx, maxx+1):
                 l.append(factory(self[(x,y)]))
             print(''.join(l)) 
-
+        print(''.join(['-' for _ in range(minx, maxx+1)]))
 # ========================================
 # A combination of many GridLayer's
 class Grid:

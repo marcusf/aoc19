@@ -23,12 +23,16 @@ __opcode_table = {
     4: '<op>{name}</op> {vars[2]} = {vars[0]} {operator} {vars[1]}'
 }
 
+def pretty_dummy(loc, name, modes, width, args, operator=',', rel_base='base'):
+    vars = fmt_args(args, modes, rel_base)
+    return f'<loc>{loc}:</loc>\t{__opcode_table[width].format(name=name,operator=operator,vars=vars)}\t'
+()
 def pretty_code(loc, opcode, args, rel_base='base'):
-    source_str = str(loc)
+    #source_str = str(loc)
     name, modes, width = opcode.name, opcode.mode, opcode.width
     operator = opcode.operator if opcode.operator != None else ','
     vars = fmt_args(args, modes, rel_base)
-    return f'<loc>{source_str}:</loc>\t{__opcode_table[width].format(name=name,operator=operator,vars=vars)}\t'
+    return f'<loc>{loc}:</loc>\t{__opcode_table[width].format(name=name,operator=operator,vars=vars)}\t'
 
 def pretty_args(stream, ip, args, opcode, relative_base):
     outp = []
