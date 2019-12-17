@@ -71,6 +71,9 @@ class Coord2D:
         else:
             return Coord2D(self.x+other.x, self.y+other.y)
 
+    def __sub__(self, other):
+        return Coord2D(self.x-other.x, self.y-other.y)
+
     def rotate90(self):
         sx = self.x
         self.x = -self.y
@@ -152,6 +155,14 @@ class GridLayer:
     
     def get(self, x, y):
         return self.grid[Coord2D(x,y)]
+
+    def adjacent(self, pos):
+        return [
+            (pos+(1,0), self.grid[pos+(1,0)], self.meta[pos+(1,0)]),
+            (pos+(-1,0), self.grid[pos+(-1,0)], self.meta[pos+(-1,0)]),
+            (pos+(0,1), self.grid[pos+(0,1)], self.meta[pos+(0,1)]),
+            (pos+(0,-1), self.grid[pos+(0,-1)], self.meta[pos+(0,-1)]),
+        ]
 
     def put_meta(self, x, y, v=None):
         if v == None:
