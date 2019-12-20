@@ -64,7 +64,9 @@ class Coord2D:
         self.x += other.x
         self.y += other.y 
         return self
-
+    def __iter__(self):
+        yield self.x
+        yield self.y
     def __add__(self, other): 
         if isinstance(other, tuple):
             return Coord2D(self.x+other[0], self.y+other[1])
@@ -119,6 +121,7 @@ class GridLayer:
     def __init__(self, value_constructor=int, meta_constructor=int):
         self.grid = defaultdict(value_constructor)
         self.meta = defaultdict(meta_constructor)
+        self.value_constructor = value_constructor
         self.grid_bag = set()
         self.minx = sys.maxsize
         self.miny = sys.maxsize
@@ -180,7 +183,15 @@ class GridLayer:
         if self.get_meta(x,y) == guard:
             self.put_meta(x,y,val)
 
-    def print(self, factory=lambda c: '#' if c == 1 else ' '):
+    def print(self, factory=None):
+        _int_printer = lambda c: '#' if c == 1 else ' '
+        _str_printer = lambda c: c
+        if factory == None:
+            if isinstance(self.value_constructor, int):
+                factory = _int_printer
+            else:
+                factory = _str_printer
+        
         minx, miny, maxx, maxy = self.bounds()
         print(''.join(['-' for _ in range(minx, maxx+1)]))
         for y in range(miny, maxy+1):
@@ -189,6 +200,7 @@ class GridLayer:
                 l.append(factory(self[(x,y)]))
             print(''.join(l)) 
         print(''.join(['-' for _ in range(minx, maxx+1)]))
+
 # ========================================
 # A combination of many GridLayer's
 class Grid:

@@ -14,16 +14,24 @@ class interpreter:
     def __init__(self, code):
         self.code = code
         self.original_code = code[:]
-        self.ip = 0
-        self.relative_base = 0
+        self.__restart_vars()
+
         self.verbose = False
         self.printer = print_debug
         self.tracing = False
         self.tracing_fn = None
         self.max_iter = -1
         self.debugger = None
+
+    def __restart_vars(self):
+        self.ip = 0
+        self.relative_base = 0
         self.finished = False
         self.input = []
+
+    def restart(self):
+        self.code = self.original_code[:]
+        self.__restart_vars()
 
     def run_until_blocked(self):
         output = []
