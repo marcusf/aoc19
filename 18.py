@@ -47,19 +47,18 @@ def update(mapp, doors, keys, current, dp, target):
     else:
         return state(new_pos, current.keys, current.steps+1)
 
-def bfs(mapp, doors, keys, start, target):
+def bfs(m, d, k, start, target):
     queue = []
     visited = set()
     queue.append(state(start, frozenset(), 0))
     visited.add(start)
     while queue:
         curr = queue.pop(0)
-
         if curr.keys == target:
             return curr.steps
 
         for dp in [(-1,0),(1,0),(0,-1),(0,1)]:
-            new_state = update(mapp, doors, keys, curr, dp, target)
+            new_state = update(m, d, k, curr, dp, target)
             if new_state and not new_state in visited:
                 visited.add(new_state)
                 queue.append(new_state)
@@ -86,5 +85,5 @@ def part2():
 
     print(sum([bfs(mapp, doorst, keyst, starts[i], frozenset(buckets[i])) for i in range(4)]))
 
-
+part1()
 part2()
