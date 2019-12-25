@@ -185,7 +185,7 @@ class GridLayer:
 
     def print(self, factory=None):
         _int_printer = lambda c: '#' if c == 1 else ' '
-        _str_printer = lambda c: c
+        _str_printer = lambda c: c if c else ' '
         if factory == None:
             if isinstance(self.value_constructor, int):
                 factory = _int_printer
